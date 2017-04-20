@@ -1,0 +1,90 @@
+{
+    "variables": {
+	"vm_name": "rhel-7.3-vbox",
+	"iso_url": "file:///home/michael/src/packer-rhel7-vms/rhel-server-7.3-x86_64-dvd.iso",
+	"iso_sha256": "120acbca7b3d55465eb9f8ef53ad7365f2997d42d4f83d7cc285bf5c71e1131f",
+        "http_proxy": "{{env `http_proxy`}}",
+        "https_proxy": "{{env `https_proxy`}}",
+        "ftp_proxy": "{{env `ftp_proxy`}}",
+        "no_proxy": "{{env `no_proxy`}}",
+        "rsync_proxy": "{{env `rsync_proxy`}}"
+    },
+
+    "builders": [{
+        "guest_additions_url": "http://download.virtualbox.org/virtualbox/5.1.18/VBoxGuestAdditions_5.1.18.iso",
+        "guest_additions_sha256": "f2951b49f48a560fbc1afe9d135d1f3f82a3e158b9002278d05d978428adca8a",
+        "guest_additions_mode": "upload",
+        "headless": "true",
+	"type": "virtualbox-iso",
+	"guest_os_type": "RedHat_64",
+	"vm_name": "{{user `vm_name`}}",
+	"disk_size": "8192",
+	"vboxmanage": [
+	    ["modifyvm", "{{.Name}}", "--memory", "1024"],
+	    ["modifyvm", "{{.Name}}", "--cpus", "4"],
+	    ["modifyvm", "{{.Name}}", "--ioapic", "on"],
+	    ["modifyvm", "{{.Name}}", "--pae", "on"],
+	    ["modifyvm", "{{.Name}}", "--rtcuseutc", "on"],
+	    ["modifyvm", "{{.Name}}", "--bioslogodisplaytime", "1"]
+	],
+	"iso_checksum_type": "sha256",
+	"iso_url": "{{user `iso_url`}}",
+	"iso_checksum": "{{user `iso_sha256`}}",
+	"http_directory": "http",
+	"ssh_wait_timeout": "20m",
+	"ssh_username": "vagrant",
+	"ssh_password": "vagrant",
+	"shutdown_command": "echo 'vagrant'|sudo -S /sbin/halt -h -p",
+	"boot_wait": "5s",
+	"boot_command": [
+	    "<esc><wait>",
+	    "vmlinuz initrd=initrd.img net.ifnames=0 biosdevname=0 ",
+	    "ks=http://{{.HTTPIP}}:{{.HTTPPort}}/vbox-ks.cfg",
+	    "<enter>"
+	],
+
+        "guest_os_type": "RedHat_64"
+
+    }],
+
+    "provisioners": [
+        {
+            "environment_vars": [
+                "CM={{user `cm`}}",
+                "CM_VERSION={{user `cm_version`}}",
+                "DESKTOP={{user `desktop`}}",
+                "DOCKER={{user `docker`}}",
+                "UPDATE={{user `update`}}",
+                "INSTALL_VAGRANT_KEY={{user `install_vagrant_key`}}",
+                "SSH_USERNAME={{user `ssh_username`}}",
+                "SSH_PASSWORD={{user `ssh_password`}}",
+                "http_proxy={{user `http_proxy`}}",
+                "https_proxy={{user `https_proxy`}}",
+                "ftp_proxy={{user `ftp_proxy`}}",
+                "rsync_proxy={{user `rsync_proxy`}}",
+                "no_proxy={{user `no_proxy`}}",
+                "INSTALL_VAGRANT_KEY=true",
+                "rsync_proxy={{user `rsync_proxy`}}"
+            ],
+
+	    "type": "shell",
+	    "execute_command": "echo 'vagrant' | {{.Vars}} sudo -S -E bash '{{.Path}}'",
+	    "scripts": [
+                "scripts/ansible.sh",
+	        "scripts/vagrant.sh",
+	        "scripts/sshd.sh",
+	        "scripts/virtualbox.sh",
+                "scripts/update.sh",
+                "scripts/fix-slow-dns.sh",
+                "scripts/sysprep.sh",
+	        "scripts/cleanup.sh"
+
+	    ]
+        }],
+
+    "post-processors": [{
+        "type": "vagrant",
+        "output": "{{user `vm_name`}}.box",
+        "keep_input_artifact": false
+  }]
+}
